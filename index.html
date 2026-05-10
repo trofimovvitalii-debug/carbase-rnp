@@ -1,0 +1,1223 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>РНП — CarBase</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;700;800;900&family=Geologica:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#080810;--s1:#0f0f1a;--s2:#161625;--s3:#1e1e30;
+  --border:rgba(255,255,255,0.07);--text:#eeeef8;--muted:#606080;
+  --accent:#7c6fff;--green:#00d68f;--red:#ff4d6d;--orange:#ffaa00;--blue:#00b4ff;
+  --r:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Geologica',sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column}
+.app{display:flex;height:100vh;overflow:hidden}
+
+/* SIDEBAR */
+.sidebar{width:220px;min-width:220px;background:var(--s1);border-right:1px solid var(--border);display:flex;flex-direction:column;transition:transform 0.3s;z-index:200}
+.sidebar-logo{padding:18px 18px 14px;border-bottom:1px solid var(--border)}
+.logo-mark{font-family:'Unbounded',sans-serif;font-size:15px;font-weight:900;color:var(--accent)}
+.logo-sub{font-size:10px;color:var(--muted);margin-top:2px}
+.nav{flex:1;overflow-y:auto;padding:8px 0}
+.nav-label{font-size:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding:10px 16px 4px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 16px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;transition:all .15s;border-left:2px solid transparent;white-space:nowrap}
+.nav-item .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.nav-item:hover{color:var(--text);background:var(--s2)}
+.nav-item.active{color:var(--text);background:var(--s2);border-left-color:var(--accent)}
+.sidebar-bottom{padding:10px 12px;border-top:1px solid var(--border)}
+.month-sel{width:100%;background:var(--s2);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;font-family:'Geologica',sans-serif;font-size:12px;cursor:pointer;outline:none}
+
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{padding:12px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;background:var(--s1);flex-shrink:0;flex-wrap:wrap}
+.back-btn{background:var(--s2);border:1px solid var(--border);color:var(--muted);padding:5px 12px;border-radius:7px;font-size:12px;cursor:pointer;font-family:'Geologica',sans-serif;display:none;align-items:center;gap:5px;white-space:nowrap}
+.back-btn:hover{color:var(--text);border-color:var(--accent)}
+.page-title{font-family:'Unbounded',sans-serif;font-size:13px;font-weight:700;flex:1}
+.menu-btn{display:none;background:var(--s2);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:7px;cursor:pointer;font-size:15px}
+
+/* DATE RANGE PICKER */
+.daterange{display:flex;align-items:center;gap:6px;background:var(--s2);padding:5px 10px;border-radius:8px;border:1px solid var(--border)}
+.daterange label{font-size:11px;color:var(--muted)}
+.daterange input[type=date]{background:transparent;border:none;color:var(--text);font-family:'Geologica',sans-serif;font-size:12px;outline:none;cursor:pointer;min-width:110px}
+.daterange input[type=date]::-webkit-calendar-picker-indicator{filter:invert(0.5);cursor:pointer}
+.daterange span{color:var(--muted);font-size:11px}
+.btn-apply{background:var(--accent);color:#fff;border:none;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;font-family:'Geologica',sans-serif}
+
+.content{flex:1;overflow-y:auto;padding:18px 20px;display:flex;flex-direction:column;gap:16px}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--s3);border-radius:2px}
+
+/* NETWORK BANNER */
+.network-banner{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.nb-title{font-family:'Unbounded',sans-serif;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+.nb-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.nb-item{display:flex;flex-direction:column;gap:2px}
+.nb-label{font-size:10px;color:var(--muted);font-weight:500}
+.nb-value{font-family:'Unbounded',sans-serif;font-size:20px;font-weight:700;letter-spacing:-.5px}
+.nb-sub{display:flex;align-items:center;gap:6px;margin-top:2px;flex-wrap:wrap}
+.nb-plan{font-size:11px;color:var(--muted)}
+.tag{display:inline-block;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:700}
+.tag-green{background:rgba(0,214,143,.12);color:var(--green)}
+.tag-red{background:rgba(255,77,109,.12);color:var(--red)}
+.tag-orange{background:rgba(255,170,0,.12);color:var(--orange)}
+.tag-blue{background:rgba(0,180,255,.12);color:var(--blue)}
+.nb-divider{border:none;border-top:1px solid var(--border);margin:14px 0}
+
+/* LOC CARDS */
+.loc-cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.loc-card{background:var(--s1);border:1px solid var(--border);border-top:2px solid transparent;border-radius:var(--r);padding:18px 20px;cursor:pointer;transition:all .2s}
+.loc-card:hover{transform:translateY(-2px);border-color:rgba(255,255,255,.15)}
+.lc-name{font-family:'Unbounded',sans-serif;font-size:14px;font-weight:700;margin-bottom:8px}
+.lc-main{font-family:'Unbounded',sans-serif;font-size:26px;font-weight:700;letter-spacing:-.5px;margin-bottom:8px;white-space:nowrap}
+.lc-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.lc-stat{font-size:14px;color:var(--muted)}
+.lc-stat span{color:var(--text);font-weight:600}
+.lc-forecast{font-size:14px;color:var(--orange);margin-top:6px}
+.lc-split{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+.lc-split-item{font-size:13px}
+.lc-split-label{color:var(--muted);margin-bottom:1px}
+.lc-split-val{font-weight:600}
+
+/* CHART */
+.chart-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:16px}
+.ch-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;gap:8px;flex-wrap:wrap}
+.ch-title{font-size:13px;font-weight:600}
+.ch-tabs{display:flex;gap:3px;background:var(--s2);padding:3px;border-radius:7px}
+.ctab{padding:4px 10px;border-radius:5px;font-size:11px;font-weight:600;cursor:pointer;color:var(--muted);transition:all .15s}
+.ctab.active{background:var(--s3);color:var(--text)}
+.ch-wrap{position:relative;height:190px}
+
+/* TABLE */
+.table-card{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.table-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.table-title{font-size:13px;font-weight:600}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{background:var(--s2);padding:7px 10px;text-align:left;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0;z-index:1}
+th.r,td.r{text-align:right}
+tbody tr{border-bottom:1px solid var(--border)}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:rgba(255,255,255,.02)}
+td{padding:7px 10px;white-space:nowrap}
+td.muted{color:var(--muted);font-size:11px}
+.week-row td{background:rgba(255,255,255,.02);color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:4px 10px;border-top:1px solid var(--border)}
+.total-row td{font-weight:700;background:var(--s2)}
+.badge{display:inline-flex;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:700}
+.badge-m{background:rgba(0,214,143,.1);color:var(--green);border:1px solid rgba(0,214,143,.2)}
+.badge-d{background:rgba(0,180,255,.1);color:var(--blue);border:1px solid rgba(0,180,255,.2)}
+
+/* METRIC CARDS 9-grid */
+.metrics-9{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.mc{background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:14px}
+.mc-label{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.mc-value{font-family:'Unbounded',sans-serif;font-size:17px;font-weight:700;letter-spacing:-.3px;margin-bottom:8px}
+.mc-rows{display:grid;grid-template-columns:1fr 1fr;gap:3px}
+.mc-row{font-size:10px;color:var(--muted)}
+.mc-row span{color:var(--text);font-weight:600}
+
+/* UPLOAD */
+.upload-zone{border:2px dashed var(--border);border-radius:var(--r);padding:40px 24px;text-align:center;cursor:pointer;transition:all .2s;position:relative;background:var(--s1)}
+.upload-zone:hover,.upload-zone.over{border-color:var(--accent);background:rgba(124,111,255,.05)}
+.upload-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.upload-icon{font-size:32px;margin-bottom:10px}
+.upload-title{font-family:'Unbounded',sans-serif;font-size:13px;font-weight:700;margin-bottom:5px}
+.upload-sub{font-size:12px;color:var(--muted)}
+
+/* RESULT */
+.result-card{background:var(--s1);border:1px solid var(--green);border-radius:var(--r);padding:14px;margin-top:12px}
+.result-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px}
+.result-row:last-child{border-bottom:none}
+.result-val{margin-left:auto;font-weight:600}
+
+/* SETTINGS */
+.settings-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.settings-tbl th{background:var(--s2);padding:7px 10px;font-size:10px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border:1px solid var(--border);text-align:center}
+.settings-tbl td{border:1px solid var(--border);padding:5px 8px}
+.settings-tbl td:first-child{font-weight:600;background:var(--s2);white-space:nowrap}
+.s-inp{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 7px;border-radius:5px;font-family:'Geologica',sans-serif;font-size:12px;outline:none;text-align:right;min-width:90px}
+.s-inp:focus{border-color:var(--accent)}
+
+/* BTN */
+.btn{padding:7px 16px;border-radius:7px;font-family:'Geologica',sans-serif;font-size:12px;font-weight:600;cursor:pointer;border:none;transition:all .15s}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{opacity:.85}
+.btn-outline{background:transparent;border:1px solid var(--border);color:var(--text)}
+.btn-outline:hover{border-color:var(--accent);color:var(--accent)}
+.btn-green{background:var(--green);color:#000}
+
+.sec-title{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+
+/* OVERLAY & MOBILE */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:150;backdrop-filter:blur(4px)}
+.overlay.show{display:block}
+.mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--s1);border-top:1px solid var(--border);z-index:200;padding:5px 0 env(safe-area-inset-bottom)}
+.mobile-nav-items{display:flex;justify-content:space-around}
+.mni{display:flex;flex-direction:column;align-items:center;gap:2px;padding:5px 8px;cursor:pointer;color:var(--muted);transition:color .15s;font-size:10px;font-weight:500}
+.mni.active{color:var(--accent)}
+.mni-icon{font-size:17px}
+
+.toast{position:fixed;bottom:70px;right:14px;background:var(--s2);border:1px solid var(--border);color:var(--text);padding:9px 14px;border-radius:9px;font-size:12px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:999}
+.toast.show{opacity:1}
+
+@media(max-width:900px){.nb-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:768px){
+  .banner-grid{grid-template-columns:1fr 1fr!important}
+  .sidebar{position:fixed;left:0;top:0;bottom:0;transform:translateX(-100%)}
+  .sidebar.open{transform:translateX(0)}
+  .menu-btn{display:flex;align-items:center}
+  .mobile-nav{display:block}
+  .content{padding:10px;padding-bottom:75px;gap:10px}
+  .loc-cards{grid-template-columns:1fr}
+  .metrics-9{grid-template-columns:1fr 1fr}
+  .topbar{padding:9px 12px;gap:7px}
+  .daterange{display:none}
+  .ch-wrap{height:180px}
+  .nb-grid{grid-template-columns:repeat(2,1fr)}
+  .network-banner [style*="grid-template-columns:1fr 1fr 1fr 1fr"]{display:flex;flex-direction:column}
+  .lc-main{font-size:22px}
+  .mc-value{font-size:22px!important}
+  .mc{min-width:0}
+  table{font-size:11px}
+  td,th{padding:5px 8px}
+  .page-title{font-size:12px}
+  .logo-mark{font-size:13px}
+  .obj-cards-grid{grid-template-columns:1fr!important}
+}
+@media(max-width:480px){
+  .loc-cards{grid-template-columns:1fr}
+  .metrics-9{grid-template-columns:1fr}
+  .cards-grid-6{grid-template-columns:1fr}
+}
+@media(max-width:480px){
+  .loc-cards{grid-template-columns:1fr}
+  .metrics-9{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-mark">CarBase РНП</div>
+    <div class="logo-sub">Ежедневный отчёт по сети</div>
+  </div>
+  <div class="nav">
+    <div class="nav-label">Главное</div>
+    <div class="nav-item active" onclick="go('summary')" id="nav-summary"><span>📊</span>Сводка</div>
+    <div class="nav-label">Объекты</div>
+    <div class="nav-item" onclick="go('loc','oceania')" id="nav-oceania"><span class="dot" style="background:#7c6fff"></span>Океания</div>
+    <div class="nav-item" onclick="go('loc','horoshevo')" id="nav-horoshevo"><span class="dot" style="background:#00d68f"></span>Хорошо</div>
+    <div class="nav-item" onclick="go('loc','galereya')" id="nav-galereya"><span class="dot" style="background:#ff6b9d"></span>Галерея</div>
+    <div class="nav-item" onclick="go('loc','sochi')" id="nav-sochi"><span class="dot" style="background:#00b4ff"></span>Сочи</div>
+    <div class="nav-item" onclick="go('loc','kazan')" id="nav-kazan"><span class="dot" style="background:#ffaa00"></span>Казань</div>
+    <div class="nav-item" onclick="go('loc','serpuhovka')" id="nav-serpuhovka"><span class="dot" style="background:#ff7f50"></span>Серпуховка</div>
+    <div class="nav-label">Система</div>
+    <div class="nav-item" onclick="go('compare')" id="nav-compare"><span>📈</span>Сравнение</div>
+    <div class="nav-item" onclick="go('upload')" id="nav-upload"><span>📤</span>Загрузка данных</div>
+    <div class="nav-item" onclick="go('settings')" id="nav-settings"><span>⚙️</span>Настройки плана</div>
+  </div>
+  <div class="sidebar-bottom">
+    <select class="month-sel" id="monthSel" onchange="onMonthChange()">
+      <option value="2026-05">Май 2026</option>
+      <option value="2026-04" selected>Апрель 2026</option>
+      <option value="2026-03">Март 2026</option>
+    </select>
+  </div>
+</div>
+
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+
+<div class="main">
+  <div class="topbar">
+    <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+    <button class="back-btn" id="backBtn" onclick="go('summary')">← Назад</button>
+    <div class="page-title" id="pageTitle">Сводка</div>
+    <div class="daterange">
+      <label>С</label>
+      <input type="date" id="dateFrom" value="2026-05-01">
+      <span>—</span>
+      <label>По</label>
+      <input type="date" id="dateTo" value="2026-05-31">
+      <button class="btn-apply" onclick="applyDates()">OK</button>
+    </div>
+  </div>
+  <div class="content" id="content"></div>
+</div>
+
+<div class="mobile-nav">
+  <div class="mobile-nav-items">
+    <div class="mni active" onclick="go('summary')" id="mnav-summary"><span class="mni-icon">📊</span>Сводка</div>
+    <div class="mni" onclick="toggleSidebar()" id="mnav-locs"><span class="mni-icon">📍</span>Объекты</div>
+    <div class="mni" onclick="go('upload')" id="mnav-upload"><span class="mni-icon">📤</span>Загрузка</div>
+    <div class="mni" onclick="go('compare')" id="mnav-compare"><span class="mni-icon">📈</span>Сравнение</div>
+    <div class="mni" onclick="go('settings')" id="mnav-settings"><span class="mni-icon">⚙️</span>План</div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ===================== DATA =====================
+const RAW_DATA = {"oceania":{"2026-02-26":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":15920,"mCarsPrev":2,"dRevPrev":0,"dCarsPrev":0},"2026-03-05":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":42740,"mCarsPrev":3,"dRevPrev":0,"dCarsPrev":0},"2026-03-08":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":12400,"mCarsPrev":2,"dRevPrev":0,"dCarsPrev":0},"2026-03-12":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":4720,"mCarsPrev":1,"dRevPrev":0,"dCarsPrev":0},"2026-03-13":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":21500,"mCarsPrev":1,"dRevPrev":0,"dCarsPrev":0},"2026-03-23":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":3000,"mCarsPrev":1,"dRevPrev":0,"dCarsPrev":0},"2026-03-28":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":31100,"mCarsPrev":1,"dRevPrev":0,"dCarsPrev":0},"2026-03-30":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":6000,"dCarsPrev":1},"2026-03-31":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":14400,"mCarsPrev":3,"dRevPrev":0,"dCarsPrev":0},"2026-04-01":{"mRev":293168,"mCars":54,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-02":{"mRev":106840,"mCars":26,"dRev":1660035,"dCars":12,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-03":{"mRev":436680,"mCars":76,"dRev":287700,"dCars":4,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-04":{"mRev":384295,"mCars":72,"dRev":259200,"dCars":4,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-05":{"mRev":250521,"mCars":44,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-06":{"mRev":118700,"mCars":23,"dRev":253100,"dCars":5,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-07":{"mRev":295250,"mCars":49,"dRev":176300,"dCars":3,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-08":{"mRev":254430,"mCars":55,"dRev":280400,"dCars":3,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-09":{"mRev":90300,"mCars":19,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-10":{"mRev":107400,"mCars":24,"dRev":15000,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-11":{"mRev":235880,"mCars":44,"dRev":74900,"dCars":2,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-12":{"mRev":330580,"mCars":56,"dRev":1088850,"dCars":2,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-13":{"mRev":364931,"mCars":88,"dRev":200000,"dCars":2,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-14":{"mRev":147278,"mCars":36,"dRev":331150,"dCars":4,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-15":{"mRev":82240,"mCars":15,"dRev":5000,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-16":{"mRev":380900,"mCars":59,"dRev":594920,"dCars":4,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-17":{"mRev":358980,"mCars":69,"dRev":277600,"dCars":4,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-18":{"mRev":295840,"mCars":50,"dRev":446550,"dCars":4,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-19":{"mRev":320730,"mCars":56,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-20":{"mRev":384530,"mCars":63,"dRev":100300,"dCars":2,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-21":{"mRev":312390,"mCars":63,"dRev":465900,"dCars":6,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-22":{"mRev":226120,"mCars":50,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-23":{"mRev":165360,"mCars":26,"dRev":95000,"dCars":2,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-24":{"mRev":403770,"mCars":53,"dRev":101600,"dCars":4,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-25":{"mRev":293990,"mCars":54,"dRev":37100,"dCars":4,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-26":{"mRev":128250,"mCars":24,"dRev":35100,"dCars":2,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-27":{"mRev":68150,"mCars":10,"dRev":111250,"dCars":2,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-28":{"mRev":73000,"mCars":9,"dRev":50000,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-29":{"mRev":70340,"mCars":15,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-30":{"mRev":212720,"mCars":45,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0}},"horoshevo":{"2026-03-30":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":41400,"mCarsPrev":1,"dRevPrev":0,"dCarsPrev":0},"2026-04-01":{"mRev":266748,"mCars":59,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-02":{"mRev":187638,"mCars":34,"dRev":30000,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-03":{"mRev":364581,"mCars":75,"dRev":82500,"dCars":2,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-04":{"mRev":448920,"mCars":59,"dRev":78800,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-05":{"mRev":177550,"mCars":28,"dRev":172000,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-06":{"mRev":199950,"mCars":40,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-07":{"mRev":227690,"mCars":42,"dRev":110000,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-08":{"mRev":220263,"mCars":38,"dRev":43000,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-09":{"mRev":128998,"mCars":19,"dRev":71600,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-10":{"mRev":150285,"mCars":32,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-11":{"mRev":237420,"mCars":47,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-12":{"mRev":329510,"mCars":60,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-13":{"mRev":369146,"mCars":71,"dRev":80310,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-14":{"mRev":232503,"mCars":33,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-15":{"mRev":155528,"mCars":27,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-16":{"mRev":253730,"mCars":55,"dRev":47400,"dCars":2,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-17":{"mRev":296783,"mCars":66,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-18":{"mRev":302895,"mCars":51,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-19":{"mRev":316485,"mCars":57,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-20":{"mRev":296330,"mCars":56,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-21":{"mRev":316796,"mCars":57,"dRev":40000,"dCars":2,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-22":{"mRev":280065,"mCars":51,"dRev":43690,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-23":{"mRev":62750,"mCars":18,"dRev":49500,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-24":{"mRev":181473,"mCars":40,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-25":{"mRev":288125,"mCars":52,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-26":{"mRev":164110,"mCars":18,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-27":{"mRev":59800,"mCars":8,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-28":{"mRev":52250,"mCars":9,"dRev":36050,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-29":{"mRev":88200,"mCars":24,"dRev":48000,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-30":{"mRev":336721,"mCars":53,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0}},"galereya":{"2026-03-09":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":357000,"dCarsPrev":1},"2026-04-01":{"mRev":191800,"mCars":39,"dRev":725000,"dCars":6,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-02":{"mRev":189640,"mCars":38,"dRev":88100,"dCars":4,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-03":{"mRev":94300,"mCars":20,"dRev":101710,"dCars":4,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-04":{"mRev":93040,"mCars":21,"dRev":104700,"dCars":6,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-05":{"mRev":224775,"mCars":36,"dRev":195100,"dCars":5,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-06":{"mRev":129150,"mCars":28,"dRev":63300,"dCars":2,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-07":{"mRev":81080,"mCars":12,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-08":{"mRev":186500,"mCars":39,"dRev":137100,"dCars":7,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-09":{"mRev":273850,"mCars":45,"dRev":414700,"dCars":10,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-10":{"mRev":193610,"mCars":46,"dRev":41055,"dCars":5,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-11":{"mRev":254400,"mCars":52,"dRev":82500,"dCars":2,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-12":{"mRev":200310,"mCars":38,"dRev":1145800,"dCars":3,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-13":{"mRev":135780,"mCars":28,"dRev":118200,"dCars":3,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-14":{"mRev":90855,"mCars":21,"dRev":211200,"dCars":5,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-15":{"mRev":126000,"mCars":18,"dRev":479200,"dCars":3,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-16":{"mRev":149900,"mCars":28,"dRev":49900,"dCars":2,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-17":{"mRev":135720,"mCars":26,"dRev":133250,"dCars":8,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-18":{"mRev":203725,"mCars":30,"dRev":103500,"dCars":5,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-19":{"mRev":290670,"mCars":38,"dRev":163700,"dCars":7,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-20":{"mRev":117790,"mCars":21,"dRev":80200,"dCars":3,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-21":{"mRev":124040,"mCars":26,"dRev":173700,"dCars":2,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-22":{"mRev":147950,"mCars":23,"dRev":92000,"dCars":3,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-23":{"mRev":99400,"mCars":16,"dRev":254100,"dCars":4,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-24":{"mRev":81000,"mCars":17,"dRev":52300,"dCars":2,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-25":{"mRev":115500,"mCars":15,"dRev":94150,"dCars":3,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-26":{"mRev":42800,"mCars":9,"dRev":60000,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-27":{"mRev":51200,"mCars":11,"dRev":10500,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-28":{"mRev":121835,"mCars":21,"dRev":44700,"dCars":3,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-29":{"mRev":108600,"mCars":21,"dRev":11900,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-30":{"mRev":180220,"mCars":32,"dRev":17300,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0}},"kazan":{"2026-03-28":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":298400,"dCarsPrev":1},"2026-03-30":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":41000,"dCarsPrev":1},"2026-04-01":{"mRev":22560,"mCars":6,"dRev":37000,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-02":{"mRev":4300,"mCars":1,"dRev":507500,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-03":{"mRev":4300,"mCars":2,"dRev":23000,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-04":{"mRev":41700,"mCars":9,"dRev":5600,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-05":{"mRev":17100,"mCars":4,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-06":{"mRev":3400,"mCars":3,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-07":{"mRev":25650,"mCars":4,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-08":{"mRev":34670,"mCars":8,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-09":{"mRev":19610,"mCars":3,"dRev":15000,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-10":{"mRev":7300,"mCars":2,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-11":{"mRev":29200,"mCars":6,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-12":{"mRev":29950,"mCars":7,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-13":{"mRev":31200,"mCars":7,"dRev":464100,"dCars":3,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-14":{"mRev":51375,"mCars":10,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-15":{"mRev":58580,"mCars":8,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-16":{"mRev":34900,"mCars":8,"dRev":2000,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-17":{"mRev":19690,"mCars":4,"dRev":10000,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-18":{"mRev":13500,"mCars":3,"dRev":2000,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-19":{"mRev":7850,"mCars":3,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-20":{"mRev":0,"mCars":1,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-21":{"mRev":3900,"mCars":1,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-22":{"mRev":18460,"mCars":5,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-23":{"mRev":24200,"mCars":5,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-24":{"mRev":20940,"mCars":6,"dRev":3900,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-25":{"mRev":4900,"mCars":2,"dRev":9300,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-26":{"mRev":30820,"mCars":5,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-27":{"mRev":0,"mCars":1,"dRev":99000,"dCars":2,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-28":{"mRev":1900,"mCars":1,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-29":{"mRev":47510,"mCars":11,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-30":{"mRev":34940,"mCars":11,"dRev":2000,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0}},"sochi":{"2026-03-09":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":576000,"dCarsPrev":1},"2026-03-21":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":6500,"mCarsPrev":1,"dRevPrev":0,"dCarsPrev":0},"2026-03-25":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":107000,"dCarsPrev":1},"2026-03-28":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":4300,"mCarsPrev":1,"dRevPrev":0,"dCarsPrev":0},"2026-03-29":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":6200,"mCarsPrev":1,"dRevPrev":0,"dCarsPrev":0},"2026-03-30":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":34000,"dCarsPrev":1},"2026-03-31":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":6500,"mCarsPrev":1,"dRevPrev":105100,"dCarsPrev":2},"2026-04-01":{"mRev":78600,"mCars":15,"dRev":92050,"dCars":2,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-02":{"mRev":93800,"mCars":14,"dRev":10000,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-03":{"mRev":60840,"mCars":8,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-04":{"mRev":3000,"mCars":2,"dRev":9000,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-05":{"mRev":54400,"mCars":10,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-06":{"mRev":108550,"mCars":15,"dRev":114400,"dCars":2,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-07":{"mRev":79000,"mCars":14,"dRev":280000,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-08":{"mRev":44100,"mCars":9,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-09":{"mRev":7000,"mCars":3,"dRev":59750,"dCars":3,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-10":{"mRev":103000,"mCars":19,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-11":{"mRev":108400,"mCars":20,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-12":{"mRev":99200,"mCars":22,"dRev":32800,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-13":{"mRev":56200,"mCars":12,"dRev":353000,"dCars":2,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-14":{"mRev":80750,"mCars":16,"dRev":31200,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-15":{"mRev":97100,"mCars":16,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-16":{"mRev":66200,"mCars":14,"dRev":10000,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-17":{"mRev":47600,"mCars":12,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-18":{"mRev":40750,"mCars":10,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-19":{"mRev":48750,"mCars":6,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-20":{"mRev":90820,"mCars":20,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-21":{"mRev":133100,"mCars":16,"dRev":393000,"dCars":2,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-22":{"mRev":26400,"mCars":3,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-23":{"mRev":22100,"mCars":2,"dRev":40000,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-25":{"mRev":81000,"mCars":18,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-26":{"mRev":197100,"mCars":34,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-27":{"mRev":102150,"mCars":21,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-28":{"mRev":119050,"mCars":17,"dRev":35300,"dCars":2,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-29":{"mRev":102800,"mCars":18,"dRev":22000,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-30":{"mRev":42900,"mCars":10,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0}},"serpuhovka":{"2026-03-12":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":209000,"dCarsPrev":1},"2026-03-28":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":79500,"dCarsPrev":1},"2026-03-30":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":28400,"mCarsPrev":1,"dRevPrev":0,"dCarsPrev":0},"2026-03-31":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":6500,"mCarsPrev":1,"dRevPrev":0,"dCarsPrev":0},"2026-04-01":{"mRev":15100,"mCars":4,"dRev":165000,"dCars":2,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-02":{"mRev":4300,"mCars":1,"dRev":55650,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-03":{"mRev":6650,"mCars":2,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-04":{"mRev":13540,"mCars":3,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-06":{"mRev":26300,"mCars":1,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-07":{"mRev":1800,"mCars":1,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-08":{"mRev":0,"mCars":0,"dRev":50825,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-09":{"mRev":0,"mCars":0,"dRev":32150,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-10":{"mRev":0,"mCars":0,"dRev":99000,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-13":{"mRev":6600,"mCars":2,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-16":{"mRev":0,"mCars":0,"dRev":169500,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-17":{"mRev":14640,"mCars":3,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-18":{"mRev":6300,"mCars":2,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-21":{"mRev":3000,"mCars":1,"dRev":51290,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-22":{"mRev":13200,"mCars":3,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-23":{"mRev":4300,"mCars":1,"dRev":56620,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-24":{"mRev":5600,"mCars":1,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-25":{"mRev":9700,"mCars":2,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-04-27":{"mRev":7000,"mCars":1,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0}}};
+
+const MAY_DATA = {"oceania":{"2026-04-28":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":80300,"dCarsPrev":1},"2026-04-29":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":50000,"mCarsPrev":1,"dRevPrev":0,"dCarsPrev":0},"2026-04-30":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":25120,"mCarsPrev":2,"dRevPrev":0,"dCarsPrev":0},"2026-05-01":{"mRev":386540,"mCars":56,"dRev":190000,"dCars":2,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-02":{"mRev":404820,"mCars":63,"dRev":1703980,"dCars":9,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-03":{"mRev":385621,"mCars":70,"dRev":131500,"dCars":2,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-04":{"mRev":383728,"mCars":68,"dRev":66700,"dCars":2,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-05":{"mRev":170455,"mCars":30,"dRev":5000,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-06":{"mRev":385115,"mCars":56,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-07":{"mRev":231505,"mCars":44,"dRev":12700,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-08":{"mRev":176550,"mCars":28,"dRev":16000,"dCars":2,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-09":{"mRev":264430,"mCars":38,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-10":{"mRev":184700,"mCars":30,"dRev":103800,"dCars":4,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0}},"horoshevo":{"2026-04-30":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":90000,"dCarsPrev":1},"2026-05-01":{"mRev":169790,"mCars":33,"dRev":7000,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-02":{"mRev":385795,"mCars":62,"dRev":14600,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-03":{"mRev":353118,"mCars":66,"dRev":10360,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-04":{"mRev":575900,"mCars":61,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-05":{"mRev":221305,"mCars":50,"dRev":43000,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-06":{"mRev":317800,"mCars":40,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-07":{"mRev":398165,"mCars":51,"dRev":395000,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-08":{"mRev":156303,"mCars":30,"dRev":82900,"dCars":2,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-09":{"mRev":164125,"mCars":38,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-10":{"mRev":148520,"mCars":26,"dRev":113200,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0}},"galereya":{"2026-04-23":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":380100,"dCarsPrev":1},"2026-04-30":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":143200,"dCarsPrev":2},"2026-05-01":{"mRev":218520,"mCars":39,"dRev":1849525,"dCars":6,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-02":{"mRev":175907,"mCars":34,"dRev":144315,"dCars":4,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-03":{"mRev":171270,"mCars":22,"dRev":44200,"dCars":3,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-04":{"mRev":86800,"mCars":19,"dRev":23570,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-05":{"mRev":85740,"mCars":19,"dRev":92480,"dCars":3,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-06":{"mRev":270700,"mCars":33,"dRev":62800,"dCars":2,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-07":{"mRev":129850,"mCars":19,"dRev":21500,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-08":{"mRev":213220,"mCars":35,"dRev":37800,"dCars":2,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-09":{"mRev":77600,"mCars":12,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-10":{"mRev":252100,"mCars":29,"dRev":10300,"dCars":2,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0}},"kazan":{"2026-04-08":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":6200,"mCarsPrev":1,"dRevPrev":0,"dCarsPrev":0},"2026-04-21":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":4300,"mCarsPrev":1,"dRevPrev":0,"dCarsPrev":0},"2026-04-24":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":5900,"mCarsPrev":1,"dRevPrev":0,"dCarsPrev":0},"2026-04-26":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":1,"dRevPrev":0,"dCarsPrev":0},"2026-05-01":{"mRev":26000,"mCars":6,"dRev":19000,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-02":{"mRev":26450,"mCars":6,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-03":{"mRev":48700,"mCars":8,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-04":{"mRev":58880,"mCars":13,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-05":{"mRev":42725,"mCars":10,"dRev":41500,"dCars":2,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-06":{"mRev":55060,"mCars":10,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-07":{"mRev":45100,"mCars":8,"dRev":5000,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-08":{"mRev":25975,"mCars":5,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-09":{"mRev":8160,"mCars":2,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-10":{"mRev":32000,"mCars":6,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0}},"sochi":{"2026-04-28":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":46000,"dCarsPrev":1},"2026-04-29":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":12000,"mCarsPrev":1,"dRevPrev":0,"dCarsPrev":0},"2026-04-30":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":193000,"dCarsPrev":2},"2026-05-01":{"mRev":71100,"mCars":11,"dRev":2500,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-02":{"mRev":53950,"mCars":11,"dRev":111000,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-03":{"mRev":23800,"mCars":4,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-04":{"mRev":33100,"mCars":8,"dRev":2500,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-05":{"mRev":161700,"mCars":31,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-06":{"mRev":179900,"mCars":23,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-07":{"mRev":117650,"mCars":22,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-08":{"mRev":118700,"mCars":22,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-09":{"mRev":98500,"mCars":16,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-10":{"mRev":55000,"mCars":14,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0}},"serpuhovka":{"2026-04-27":{"mRev":0,"mCars":0,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":98000,"dCarsPrev":2},"2026-05-02":{"mRev":6500,"mCars":1,"dRev":0,"dCars":0,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0},"2026-05-07":{"mRev":0,"mCars":0,"dRev":46700,"dCars":1,"mRevPrev":0,"mCarsPrev":0,"dRevPrev":0,"dCarsPrev":0}}};
+
+const ALL_DATA = {'2026-04': RAW_DATA, '2026-05': MAY_DATA};
+
+const PLAN = {
+  oceania:    {revTotal:15500000,carsTotal:2139,revM:11000000,carsM:2075,revD:4500000,carsD:64},
+  horoshevo:  {revTotal:11500000,carsTotal:1559,revM:8000000,carsM:1509,revD:3500000,carsD:50},
+  serpuhovka: {revTotal:2700000,carsTotal:47,revM:200000,carsM:30,revD:2500000,carsD:17},
+  galereya:   {revTotal:12000000,carsTotal:1445,revM:7000000,carsM:1320,revD:5000000,carsD:125},
+  kazan:      {revTotal:2500000,carsTotal:190,revM:1000000,carsM:180,revD:1800000,carsD:10},
+  sochi:      {revTotal:7300000,carsTotal:570,revM:3300000,carsM:530,revD:4000000,carsD:40},
+};
+
+const LOCS = {
+  oceania:    {name:'Океания',    color:'#7c6fff'},
+  horoshevo:  {name:'Хорошо',   color:'#00d68f'},
+  galereya:   {name:'Галерея',    color:'#ff6b9d'},
+  sochi:      {name:'Сочи',       color:'#00b4ff'},
+  kazan:      {name:'Казань',     color:'#ffaa00'},
+  serpuhovka: {name:'Серпуховка', color:'#ff7f50'},
+};
+const LOC_ORDER = ['oceania','horoshevo','galereya','sochi','kazan','serpuhovka'];
+
+// ===================== STATE =====================
+let page='summary', curLoc=null;
+let dateFrom='2026-05-01', dateTo='2026-05-31';
+let currentMonth='2026-05';
+let compareMonth='2026-04';
+let charts={};
+
+// ===================== HELPERS =====================
+function fmt(n){return Math.round(n||0).toLocaleString('ru-RU')}
+function getFiltered(loc){
+  // Merge data from all months that overlap with date range
+  const merged={};
+  Object.values(ALL_DATA).forEach(monthData=>{
+    const locData=monthData[loc]||{};
+    Object.entries(locData).forEach(([dt,v])=>{
+      if(dt>=dateFrom&&dt<=dateTo) merged[dt]=v;
+    });
+  });
+  return Object.fromEntries(Object.entries(merged).sort((a,b)=>a[0].localeCompare(b[0])));
+}
+function sumLoc(loc){
+  // Use ALL_DATA for current month
+  const monthData=ALL_DATA[currentMonth];
+  const locData=monthData?monthData[loc]||{}:RAW_DATA[loc]||{};
+  return Object.values(locData).reduce((a,v)=>({
+    mRev:a.mRev+(v.mRev||0)+(v.mRevPrev||0),
+    mCars:a.mCars+(v.mCars||0)+(v.mCarsPrev||0),
+    dRev:a.dRev+(v.dRev||0)+(v.dRevPrev||0),
+    dCars:a.dCars+(v.dCars||0)+(v.dCarsPrev||0),
+    mRevPrev:a.mRevPrev+(v.mRevPrev||0),
+    mCarsPrev:a.mCarsPrev+(v.mCarsPrev||0),
+    dRevPrev:a.dRevPrev+(v.dRevPrev||0),
+    dCarsPrev:a.dCarsPrev+(v.dCarsPrev||0),
+  }),{mRev:0,mCars:0,dRev:0,dCars:0,mRevPrev:0,mCarsPrev:0,dRevPrev:0,dCarsPrev:0});
+}
+function forecast(fact){
+  const f=new Date(dateFrom),t=new Date(dateTo);
+  const now=new Date();
+  now.setHours(0,0,0,0);
+  // If period fully in past - forecast = fact
+  if(t<now) return fact;
+  // If period fully in future - no forecast
+  if(f>now) return null;
+  const totalDays=(t-f)/86400000+1;
+  const passed=Math.min((now-f)/86400000+1,totalDays);
+  if(passed<=0) return fact;
+  return Math.round(fact/passed*totalDays);
+}
+function fmtFc(val){
+  if(val===null) return '—';
+  return fmt(val)+' ₽';
+}
+function fmtFcNum(val){
+  if(val===null) return '—';
+  return fmt(val);
+}
+function pctColor(pct){
+  if(!pct)return'var(--muted)';
+  return pct>=100?'var(--green)':pct>=70?'var(--orange)':'var(--red)';
+}
+function pctTag(fact,plan){
+  if(!plan)return'';
+  const p=Math.round(fact/plan*100);
+  const cls=p>=100?'tag-green':p>=70?'tag-orange':'tag-red';
+  return`<span class="tag ${cls}">${p}%</span>`;
+}
+function destroyCharts(){Object.values(charts).forEach(c=>{try{c.destroy()}catch{}});charts={}}
+
+// ===================== NAV =====================
+function go(p,loc){
+  page=p;curLoc=loc||null;
+  document.querySelectorAll('.nav-item,.mni').forEach(n=>n.classList.remove('active'));
+  const bb=document.getElementById('backBtn');
+  if(p==='summary'){
+    document.getElementById('nav-summary').classList.add('active');
+    document.getElementById('mnav-summary').classList.add('active');
+    bb.style.display='none';
+    document.getElementById('pageTitle').textContent='Сводка';
+  } else if(p==='loc'){
+    document.getElementById('nav-'+loc).classList.add('active');
+    document.getElementById('mnav-locs').classList.add('active');
+    bb.style.display='flex';
+    document.getElementById('pageTitle').textContent=LOCS[loc].name;
+  } else if(p==='compare'){
+    document.getElementById('nav-compare').classList.add('active');
+    const mc=document.getElementById('mnav-compare');if(mc)mc.classList.add('active');
+    bb.style.display='none';
+    document.getElementById('pageTitle').textContent='Сравнение периодов';
+  } else if(p==='upload'){
+    document.getElementById('nav-upload').classList.add('active');
+    document.getElementById('mnav-upload').classList.add('active');
+    bb.style.display='none';
+    document.getElementById('pageTitle').textContent='Загрузка данных';
+  } else if(p==='settings'){
+    document.getElementById('nav-settings').classList.add('active');
+    document.getElementById('mnav-settings').classList.add('active');
+    bb.style.display='none';
+    document.getElementById('pageTitle').textContent='Настройки плана';
+  }
+  closeSidebar();destroyCharts();render();
+}
+
+function applyDates(){
+  dateFrom=document.getElementById('dateFrom').value;
+  dateTo=document.getElementById('dateTo').value;
+  destroyCharts();render();
+}
+function onMonthChange(){
+  const m=document.getElementById('monthSel').value;
+  const [y,mo]=m.split('-');
+  const last=new Date(+y,+mo,0).getDate();
+  dateFrom=`${m}-01`;dateTo=`${m}-${String(last).padStart(2,'0')}`;
+  document.getElementById('dateFrom').value=dateFrom;
+  document.getElementById('dateTo').value=dateTo;
+  destroyCharts();render();
+}
+
+// ===================== RENDER =====================
+function render(){
+  const c=document.getElementById('content');
+  c.innerHTML='';
+  if(page==='summary')renderSummary(c);
+  else if(page==='loc')renderLoc(c,curLoc);
+  else if(page==='compare')renderCompare(c);
+  else if(page==='upload')renderUpload(c);
+  else if(page==='settings')renderSettings(c);
+}
+
+// ---- SUMMARY ----
+function renderSummary(c){
+  // Network totals
+  let nMR=0,nDR=0,nMC=0,nDC=0;
+  LOC_ORDER.forEach(l=>{const s=sumLoc(l);nMR+=s.mRev;nDR+=s.dRev;nMC+=s.mCars;nDC+=s.dCars;});
+  const nTotal=nMR+nDR,nCars=nMC+nDC;
+  const planTotal=LOC_ORDER.reduce((s,l)=>s+(PLAN[l]?.revTotal||0),0);
+  const planCarsTotal=LOC_ORDER.reduce((s,l)=>s+(PLAN[l]?.carsTotal||0),0);
+  const planM=LOC_ORDER.reduce((s,l)=>s+(PLAN[l]?.revM||0),0);
+  const planD=LOC_ORDER.reduce((s,l)=>s+(PLAN[l]?.revD||0),0);
+  const pctNet=planTotal?Math.round(nTotal/planTotal*100):null;
+  const fcNet=forecast(nTotal);
+
+  // Network banner — new design
+  function pctTagInline(fact,plan){
+    if(!plan)return'';
+    const p=Math.round(fact/plan*100);
+    const cls=p>=100?'tag-green':p>=80?'tag-orange':'tag-red';
+    return`<span class="tag ${cls}" style="font-size:13px;padding:3px 9px">${p}%</span>`;
+  }
+  let banner=`<div class="network-banner" style="border:1px solid var(--border);border-radius:var(--r);overflow:hidden;background:var(--s1)">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;border-bottom:1px solid var(--border)" class="banner-grid">
+      <div style="padding:18px 22px;border-right:1px solid var(--border)">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Выручка общая</div>
+        <div style="font-size:28px;font-weight:700;letter-spacing:-0.5px;margin-bottom:8px;white-space:nowrap">${fmt(nTotal)} ₽</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;white-space:nowrap">
+          <span style="font-size:14px;color:var(--muted)">План: ${fmt(planTotal)} ₽</span>
+          ${pctTagInline(nTotal,planTotal)}
+        </div>
+        <div style="font-size:14px;color:var(--orange)">Прогноз: ${fcNet===null?'—':fmt(fcNet)+' ₽'}</div>
+      </div>
+      <div style="padding:18px 22px;border-right:1px solid var(--border)">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Авто общее</div>
+        <div style="font-size:28px;font-weight:700;letter-spacing:-0.5px;margin-bottom:8px">${fmt(nCars)}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <span style="font-size:14px;color:var(--muted)">План: ${fmt(planCarsTotal)}</span>
+          ${pctTagInline(nCars,planCarsTotal)}
+        </div>
+        <div style="font-size:14px;color:var(--orange)">Прогноз: ${forecast(nCars)===null?'—':fmt(forecast(nCars))}</div>
+      </div>
+      <div style="padding:18px 22px;border-right:1px solid var(--border)">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Выручка мойка</div>
+        <div style="font-size:28px;font-weight:700;letter-spacing:-0.5px;margin-bottom:8px;color:var(--green);white-space:nowrap">${fmt(nMR)} ₽</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;white-space:nowrap">
+          <span style="font-size:14px;color:var(--muted)">План: ${fmt(planM)} ₽</span>
+          ${pctTagInline(nMR,planM)}
+        </div>
+        <div style="font-size:14px;color:var(--orange)">Авто: ${fmt(nMC)} · Прогноз: ${forecast(nMR)===null?'—':fmt(forecast(nMR))+' ₽'}</div>
+      </div>
+      <div style="padding:18px 22px">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Выручка ДЦ</div>
+        <div style="font-size:28px;font-weight:700;letter-spacing:-0.5px;margin-bottom:8px;color:var(--blue);white-space:nowrap">${fmt(nDR)} ₽</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;white-space:nowrap">
+          <span style="font-size:14px;color:var(--muted)">План: ${fmt(planD)} ₽</span>
+          ${pctTagInline(nDR,planD)}
+        </div>
+        <div style="font-size:14px;color:var(--orange)">Авто: ${fmt(nDC)} · Прогноз: ${forecast(nDR)===null?'—':fmt(forecast(nDR))+' ₽'}</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr">
+      <div style="padding:14px 22px;border-right:1px solid var(--border)">
+        <div style="font-size:13px;color:var(--muted);margin-bottom:3px">Ср. чек общий</div>
+        <div style="font-size:22px;font-weight:700;letter-spacing:-0.3px">${nCars?fmt(nTotal/nCars):0} ₽</div>
+      </div>
+      <div style="padding:14px 22px;border-right:1px solid var(--border)">
+        <div style="font-size:13px;color:var(--muted);margin-bottom:3px">Ср. чек мойка</div>
+        <div style="font-size:22px;font-weight:700;letter-spacing:-0.3px;color:var(--green)">${nMC?fmt(nMR/nMC):0} ₽</div>
+      </div>
+      <div style="padding:14px 22px">
+        <div style="font-size:13px;color:var(--muted);margin-bottom:3px">Ср. чек ДЦ</div>
+        <div style="font-size:22px;font-weight:700;letter-spacing:-0.3px;color:var(--blue)">${nDC?fmt(nDR/nDC):0} ₽</div>
+      </div>
+    </div>
+  </div>`;
+
+  // Loc cards
+  let cards=`<div class="sec-title" style="margin-top:4px">По объектам</div><div class="loc-cards">`;
+  LOC_ORDER.forEach(loc=>{
+    const s=sumLoc(loc);const p=PLAN[loc]||{};
+    const total=s.mRev+s.dRev,cars=s.mCars+s.dCars;
+    const pct=p.revTotal?Math.round(total/p.revTotal*100):null;
+    const fc=forecast(total);
+    const avgM=s.mCars?Math.round(s.mRev/s.mCars):0;
+    const avgD=s.dCars?Math.round(s.dRev/s.dCars):0;
+    const prevPayTotal=(s.mRevPrev||0)+(s.dRevPrev||0);
+    const prevPayM=s.mRevPrev||0;
+    const prevPayD=s.dRevPrev||0;
+    const prevNote=prevPayTotal>0?`<div style="font-size:12px;color:var(--muted);margin-top:5px">из них оплата за пред. месяц: <span style="color:var(--orange)">${fmt(prevPayTotal)} ₽</span></div>`:'';
+    const prevNoteM=prevPayM>0?`<div style="font-size:12px;color:var(--muted);margin-top:5px">из них пред. месяц: <span style="color:var(--orange)">${fmt(prevPayM)} ₽</span></div>`:'';
+    const prevNoteD=prevPayD>0?`<div style="font-size:12px;color:var(--muted);margin-top:5px">из них пред. месяц: <span style="color:var(--orange)">${fmt(prevPayD)} ₽</span></div>`:'';
+    const pctCls=pct===null?'':pct>=100?'tag-green':pct>=80?'tag-orange':'tag-red';
+    cards+=`<div class="loc-card" onclick="go('loc','${loc}')" style="border-top-color:${LOCS[loc].color}">
+      <div class="lc-name" style="color:${LOCS[loc].color};margin-bottom:8px">${LOCS[loc].name}</div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:8px">
+        <div class="lc-main" style="margin-bottom:0">${fmt(total)} ₽</div>
+        ${pct!==null?`<span class="tag ${pctCls}" style="font-size:13px;padding:3px 10px;margin-bottom:2px">${pct}%</span>`:''}
+      </div>
+      <div style="font-size:14px;color:var(--muted);margin-bottom:2px">Авто: <span style="color:var(--text);font-weight:600">${cars}</span></div>
+      <div style="font-size:14px;color:var(--muted);margin-bottom:2px">План: <span style="color:var(--text);font-weight:600">${fmt(p.revTotal||0)} ₽</span></div>
+      <div style="font-size:14px;color:var(--orange);margin-bottom:10px">Прогноз: ${fc===null?'—':fmt(fc)+' ₽'}</div>
+      <div class="lc-split">
+        <div class="lc-split-item">
+          <div class="lc-split-label" style="color:var(--green)">Мойка</div>
+          <div class="lc-split-val">${fmt(s.mRev)} ₽</div>
+          <div style="font-size:13px;color:var(--muted)">${s.mCars} авто · ${fmt(avgM)} ₽ чек</div>
+        </div>
+        <div class="lc-split-item">
+          <div class="lc-split-label" style="color:var(--blue)">ДЦ</div>
+          <div class="lc-split-val">${fmt(s.dRev)} ₽</div>
+          <div style="font-size:13px;color:var(--muted)">${s.dCars} авто · ${fmt(avgD)} ₽ чек</div>
+        </div>
+      </div>
+    </div>`;
+  });
+  cards+='</div>';
+
+  // Chart
+  const chartHtml=`<div class="chart-card">
+    <div class="ch-header">
+      <div class="ch-title">Выручка по объектам — по дням</div>
+      <div class="ch-tabs">
+        <div class="ctab active" onclick="switchSChart('total',this)">Общая</div>
+        <div class="ctab" onclick="switchSChart('moika',this)">Мойка</div>
+        <div class="ctab" onclick="switchSChart('dc',this)">ДЦ</div>
+      </div>
+    </div>
+    <div class="ch-wrap"><canvas id="sChart"></canvas></div>
+  </div>`;
+
+  // Summary table
+  let tRows='';
+  LOC_ORDER.forEach(loc=>{
+    const s=sumLoc(loc);const p=PLAN[loc]||{};
+    const total=s.mRev+s.dRev,cars=s.mCars+s.dCars;
+    tRows+=`<tr>
+      <td style="color:${LOCS[loc].color};font-weight:600">${LOCS[loc].name}</td>
+      <td class="r">${fmt(total)}</td><td class="r" style="color:var(--muted)">${fmt(p.revTotal||0)}</td>
+      <td class="r">${pctTag(total,p.revTotal)}</td>
+      <td class="r" style="color:var(--orange)">${forecast(total)===null?'—':fmt(forecast(total))}</td>
+      <td class="r" style="color:var(--green)">${fmt(s.mRev)}</td>
+      <td class="r">${s.mCars}</td>
+      <td class="r" style="color:var(--muted)">${fmt(p.revM||0)}</td>
+      <td class="r">${pctTag(s.mRev,p.revM)}</td>
+      <td class="r" style="color:var(--blue)">${fmt(s.dRev)}</td>
+      <td class="r">${s.dCars}</td>
+      <td class="r" style="color:var(--muted)">${fmt(p.revD||0)}</td>
+      <td class="r">${pctTag(s.dRev,p.revD)}</td>
+    </tr>`;
+  });
+  tRows+=`<tr class="total-row">
+    <td>ИТОГО</td>
+    <td class="r">${fmt(nTotal)}</td><td class="r" style="color:var(--muted)">${fmt(planTotal)}</td>
+    <td class="r">${pctTag(nTotal,planTotal)}</td>
+    <td class="r" style="color:var(--orange)">${fcNet===null?'—':fmt(fcNet)}</td>
+    <td class="r" style="color:var(--green)">${fmt(nMR)}</td><td class="r">${nMC}</td>
+    <td class="r" style="color:var(--muted)">${fmt(planM)}</td><td class="r">${pctTag(nMR,planM)}</td>
+    <td class="r" style="color:var(--blue)">${fmt(nDR)}</td><td class="r">${nDC}</td>
+    <td class="r" style="color:var(--muted)">${fmt(planD)}</td><td class="r">${pctTag(nDR,planD)}</td>
+  </tr>`;
+
+  const tableHtml=`<div class="table-card">
+    <div class="table-header"><div class="table-title">Сводная РНП — все объекты</div></div>
+    <div class="tbl-wrap"><table>
+      <thead><tr>
+        <th>Объект</th>
+        <th class="r">Факт ₽</th><th class="r">План ₽</th><th class="r">%</th><th class="r">Прогноз ₽</th>
+        <th class="r">Мойка ₽</th><th class="r">Авто М</th><th class="r">План М</th><th class="r">% М</th>
+        <th class="r">ДЦ ₽</th><th class="r">Авто ДЦ</th><th class="r">План ДЦ</th><th class="r">% ДЦ</th>
+      </tr></thead>
+      <tbody>${tRows}</tbody>
+    </table></div>
+  </div>`;
+
+  c.innerHTML=banner+cards+chartHtml+tableHtml;
+  requestAnimationFrame(()=>initSChart('total'));
+}
+
+function switchSChart(type,el){
+  document.querySelectorAll('#content .ctab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  if(charts.s){charts.s.destroy();delete charts.s;}
+  initSChart(type);
+}
+
+function initSChart(type){
+  const canvas=document.getElementById('sChart');if(!canvas)return;
+  const allDates=[...new Set(LOC_ORDER.flatMap(l=>Object.keys(getFiltered(l))))].sort();
+  const datasets=LOC_ORDER.map(loc=>{
+    const d=getFiltered(loc);
+    return{
+      label:LOCS[loc].name,
+      data:allDates.map(dt=>{const v=d[dt];if(!v)return null;return type==='total'?v.mRev+v.dRev:type==='moika'?v.mRev:v.dRev;}),
+      borderColor:LOCS[loc].color,backgroundColor:LOCS[loc].color+'20',
+      borderWidth:2,pointRadius:2,tension:.3,spanGaps:true,
+    };
+  });
+  charts.s=new Chart(canvas,{type:'line',data:{labels:allDates.map(d=>d.slice(8)),datasets},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#606080',font:{size:10},boxWidth:10}}},
+      scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#606080',font:{size:9}}},
+              y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#606080',font:{size:9},callback:v=>{if(v>=1000000)return(v/1000000).toFixed(1)+'М';if(v>=1000)return Math.round(v/1000)+'К';return v;}}}}}
+  });
+}
+
+// ---- LOCATION ----
+function renderLoc(c,loc){
+  const s=sumLoc(loc);const p=PLAN[loc]||{};
+  const total=s.mRev+s.dRev,cars=s.mCars+s.dCars;
+  const avgM=s.mCars?s.mRev/s.mCars:0,avgD=s.dCars?s.dRev/s.dCars:0,avgT=cars?total/cars:0;
+  const planAvgM=p.carsM?p.revM/p.carsM:0,planAvgD=p.carsD?p.revD/p.carsD:0,planAvgT=p.carsTotal?p.revTotal/p.carsTotal:0;
+  const prevPayTotal=(s.mRevPrev||0)+(s.dRevPrev||0);
+  const prevPayM=s.mRevPrev||0;
+  const prevPayD=s.dRevPrev||0;
+  const prevNote=prevPayTotal>0?`<div style="font-size:12px;color:var(--muted);margin-top:5px">из них оплата за пред. месяц: <span style="color:var(--orange)">${fmt(prevPayTotal)} ₽</span></div>`:'';
+  const prevNoteM=prevPayM>0?`<div style="font-size:12px;color:var(--muted);margin-top:5px">из них пред. месяц: <span style="color:var(--orange)">${fmt(prevPayM)} ₽</span></div>`:'';
+  const prevNoteD=prevPayD>0?`<div style="font-size:12px;color:var(--muted);margin-top:5px">из них пред. месяц: <span style="color:var(--orange)">${fmt(prevPayD)} ₽</span></div>`:'';
+
+  function mcCard(label,fact,plan,fc,suffix,color,extra,note){
+    const pct=plan?Math.round(fact/plan*100):null;
+    const pctCls=pct===null?'':pct>=100?'tag-green':pct>=80?'tag-orange':'tag-red';
+    const bt=color?`border-top:2px solid ${color};`:'';
+    const lc=color?`color:${color}`:'color:var(--muted)';
+    const vc=color?`color:${color}`:'';
+    const extraHtml=extra?`<span style="font-size:18px;color:var(--muted);font-weight:400"> ${extra}</span>`:'';
+    return`<div class="mc" style="${bt}">
+      <div class="mc-label" style="font-size:12px;text-transform:uppercase;letter-spacing:0.04em;${lc};margin-bottom:8px">${label}</div>
+      <div class="mc-value" style="font-size:28px;${vc};margin-bottom:16px">${fmt(fact)}${suffix}${extraHtml}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;padding-top:12px;border-top:1px solid var(--border)">
+        <div><div style="font-size:12px;color:var(--muted);margin-bottom:4px">План</div><div style="font-size:15px;font-weight:600;white-space:nowrap">${fmt(plan||0)}${suffix}</div></div>
+        <div><div style="font-size:12px;color:var(--muted);margin-bottom:4px">Выполнение</div><div><span class="tag ${pctCls}" style="font-size:13px;padding:3px 9px">${pct!==null?pct+'%':'—'}</span></div></div>
+        <div><div style="font-size:12px;color:var(--muted);margin-bottom:4px">Прогноз</div><div style="font-size:15px;font-weight:600;color:var(--orange);white-space:nowrap">${fc===null?"—":fmt(fc)+(suffix||"")}</div></div>
+      </div>
+      ${note||''}
+    </div>`;
+  }
+
+  function mcCardExtra(label,fact,plan,extraLabel,extraVal,color){
+    const pct=plan?Math.round(fact/plan*100):null;
+    const pctCls=pct===null?'':pct>=100?'tag-green':pct>=80?'tag-orange':'tag-red';
+    const bt=color?`border-top:2px solid ${color};`:'';
+    const lc=color?`color:${color}`:'color:var(--muted)';
+    const vc=color?`color:${color}`:'';
+    return`<div class="mc" style="${bt}">
+      <div class="mc-label" style="font-size:12px;text-transform:uppercase;letter-spacing:0.04em;${lc};margin-bottom:8px">${label}</div>
+      <div class="mc-value" style="font-size:28px;${vc};margin-bottom:16px">${fmt(fact)} <span style="font-size:18px;color:var(--muted);font-weight:400">авто</span></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;padding-top:12px;border-top:1px solid var(--border)">
+        <div><div style="font-size:12px;color:var(--muted);margin-bottom:4px">План</div><div style="font-size:15px;font-weight:600">${fmt(plan||0)}</div></div>
+        <div><div style="font-size:12px;color:var(--muted);margin-bottom:4px">Выполнение</div><div><span class="tag ${pctCls}" style="font-size:13px;padding:3px 9px">${pct!==null?pct+'%':'—'}</span></div></div>
+        <div><div style="font-size:12px;color:var(--muted);margin-bottom:4px">${extraLabel}</div><div style="font-size:15px;font-weight:600;color:${color||'var(--text)'};">${extraVal}</div></div>
+      </div>
+    </div>`;
+  }
+
+  const metrics=`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <div style="width:10px;height:10px;border-radius:50%;background:var(--muted)"></div>
+      <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted)">Общие показатели</div>
+    </div>
+    <div class="obj-cards-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px">
+      ${mcCard('Выручка общая',total,p.revTotal,forecast(total),' ₽',null,null,prevNote)}
+      ${mcCardExtra('Посетители',cars,p.carsTotal,'Ср. чек',fmt(avgT)+' ₽',null)}
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <div style="width:10px;height:10px;border-radius:50%;background:var(--green)"></div>
+      <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--green)">Мойка</div>
+    </div>
+    <div class="obj-cards-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px">
+      ${mcCard('Выручка мойка',s.mRev,p.revM,forecast(s.mRev),' ₽','var(--green)',null,prevNoteM)}
+      ${mcCardExtra('Авто мойка',s.mCars,p.carsM,'Ср. чек',fmt(avgM)+' ₽','var(--green)')}
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+      <div style="width:10px;height:10px;border-radius:50%;background:var(--blue)"></div>
+      <div style="font-size:11px;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:var(--blue)">Детейлинг</div>
+    </div>
+    <div class="obj-cards-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px">
+      ${mcCard('Выручка ДЦ',s.dRev,p.revD,forecast(s.dRev),' ₽','var(--blue)',null,prevNoteD)}
+      ${mcCardExtra('Авто ДЦ',s.dCars,p.carsD,'Ср. чек',fmt(avgD)+' ₽','var(--blue)')}
+    </div>`;
+
+  const chartHtml=`<div class="chart-card">
+    <div class="ch-header">
+      <div class="ch-title">${LOCS[loc].name} — динамика</div>
+      <div class="ch-tabs">
+        <div class="ctab active" onclick="switchLChart('days',this,'${loc}')">По дням</div>
+        <div class="ctab" onclick="switchLChart('weeks',this,'${loc}')">По неделям</div>
+      </div>
+    </div>
+    <div class="ch-wrap"><canvas id="lChart"></canvas></div>
+  </div>`;
+
+  // Daily table
+  const d=getFiltered(loc);const dates=Object.keys(d).sort();
+  const DR=['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
+  const MN=['янв','фев','мар','апр','май','июн','июл','авг','сен','окт','ноя','дек'];
+  let rows='',lastW=null,wMR=0,wDR=0,wMC=0,wDC=0,tMR=0,tDR=0,tMC=0,tDC=0;
+
+  dates.forEach(dt=>{
+    const v=d[dt];const date=new Date(dt);
+    const wk=Math.ceil(date.getDate()/7);
+    if(wk!==lastW){
+      if(lastW!==null){
+        rows+=`<tr class="total-row" style="font-size:11px">
+          <td colspan="3" style="color:var(--muted)">Итого нед. ${lastW}</td>
+          <td class="r">${fmt(wMR)}</td><td class="r">${wMC}</td><td class="r">${wMC?fmt(wMR/wMC):0}</td>
+          <td class="r">${fmt(wDR)}</td><td class="r">${wDC}</td><td class="r">${wDC?fmt(wDR/wDC):0}</td>
+        </tr>`;
+        wMR=0;wDR=0;wMC=0;wDC=0;
+      }
+      rows+=`<tr class="week-row"><td colspan="9">Неделя ${wk}</td></tr>`;
+      lastW=wk;
+    }
+    const dd=date.getDate()+' '+MN[date.getMonth()];
+    const dn=DR[date.getDay()];
+    rows+=`<tr>
+      <td class="muted">${dd}</td><td class="muted">${dn}</td>
+      <td><span class="badge badge-m">М</span></td>
+      <td class="r">${fmt(v.mRev)}</td><td class="r">${v.mCars}</td><td class="r">${v.mCars?fmt(v.mRev/v.mCars):0}</td>
+      <td class="r" style="color:var(--muted)">—</td><td class="r" style="color:var(--muted)">—</td><td class="r" style="color:var(--muted)">—</td>
+    </tr><tr>
+      <td></td><td></td>
+      <td><span class="badge badge-d">ДЦ</span></td>
+      <td class="r" style="color:var(--muted)">—</td><td class="r" style="color:var(--muted)">—</td><td class="r" style="color:var(--muted)">—</td>
+      <td class="r">${fmt(v.dRev)}</td><td class="r">${v.dCars}</td><td class="r">${v.dCars?fmt(v.dRev/v.dCars):0}</td>
+    </tr>`;
+    if((v.mRevPrev||0)+(v.dRevPrev||0)>0){
+      const prevTotal=(v.mRevPrev||0)+(v.dRevPrev||0);
+      const prevCars=(v.mCarsPrev||0)+(v.dCarsPrev||0);
+      rows+=`<tr style="opacity:0.6;background:rgba(255,170,0,0.04)">
+        <td></td><td></td>
+        <td><span style="display:inline-flex;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:700;background:rgba(255,170,0,0.1);color:var(--orange);border:1px solid rgba(255,170,0,0.2)">пред.мес</span></td>
+        <td class="r" style="color:var(--orange)">${fmt(v.mRevPrev||0)}</td><td class="r" style="color:var(--muted)">${v.mCarsPrev||0}</td><td class="r" style="color:var(--muted)">—</td>
+        <td class="r" style="color:var(--orange)">${fmt(v.dRevPrev||0)}</td><td class="r" style="color:var(--muted)">${v.dCarsPrev||0}</td><td class="r" style="color:var(--muted)">—</td>
+      </tr>`;
+    }
+    wMR+=v.mRev+(v.mRevPrev||0);wDR+=v.dRev+(v.dRevPrev||0);wMC+=v.mCars+(v.mCarsPrev||0);wDC+=v.dCars+(v.dCarsPrev||0);
+    tMR+=v.mRev+(v.mRevPrev||0);tDR+=v.dRev+(v.dRevPrev||0);tMC+=v.mCars+(v.mCarsPrev||0);tDC+=v.dCars+(v.dCarsPrev||0);
+  });
+  if(lastW!==null)rows+=`<tr class="total-row" style="font-size:11px">
+    <td colspan="3" style="color:var(--muted)">Итого нед. ${lastW}</td>
+    <td class="r">${fmt(wMR)}</td><td class="r">${wMC}</td><td class="r">${wMC?fmt(wMR/wMC):0}</td>
+    <td class="r">${fmt(wDR)}</td><td class="r">${wDC}</td><td class="r">${wDC?fmt(wDR/wDC):0}</td>
+  </tr>`;
+  rows+=`<tr class="total-row">
+    <td colspan="3">ИТОГО за период</td>
+    <td class="r">${fmt(tMR)}</td><td class="r">${tMC}</td><td class="r">${tMC?fmt(tMR/tMC):0}</td>
+    <td class="r">${fmt(tDR)}</td><td class="r">${tDC}</td><td class="r">${tDC?fmt(tDR/tDC):0}</td>
+  </tr>`;
+
+  const tableHtml=`<div class="table-card">
+    <div class="table-header">
+      <div class="table-title">По дням</div>
+      <button class="btn btn-outline" style="font-size:11px;padding:4px 10px" onclick="exportCSV('${loc}')">CSV</button>
+    </div>
+    <div class="tbl-wrap"><table>
+      <thead><tr>
+        <th>Дата</th><th>День</th><th>Тип</th>
+        <th class="r">Выр. мойка ₽</th><th class="r">Авто М</th><th class="r">Ср.чек М ₽</th>
+        <th class="r">Выр. ДЦ ₽</th><th class="r">Авто ДЦ</th><th class="r">Ср.чек ДЦ ₽</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+  </div>`;
+
+  c.innerHTML=metrics+chartHtml+tableHtml;
+  requestAnimationFrame(()=>initLChart('days',loc));
+}
+
+function switchLChart(type,el,loc){
+  document.querySelectorAll('#content .ctab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  if(charts.l){charts.l.destroy();delete charts.l;}
+  initLChart(type,loc);
+}
+
+function initLChart(type,loc){
+  const canvas=document.getElementById('lChart');if(!canvas)return;
+  const d=getFiltered(loc);const dates=Object.keys(d).sort();
+  if(type==='days'){
+    charts.l=new Chart(canvas,{type:'bar',
+      data:{labels:dates.map(dt=>dt.slice(8)),datasets:[
+        {label:'Мойка',data:dates.map(dt=>d[dt].mRev),backgroundColor:'rgba(0,214,143,.7)',borderRadius:3},
+        {label:'ДЦ',data:dates.map(dt=>d[dt].dRev),backgroundColor:'rgba(0,180,255,.7)',borderRadius:3},
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{labels:{color:'#606080',font:{size:10},boxWidth:10}}},
+        scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#606080',font:{size:9}}},
+                y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#606080',font:{size:9},callback:v=>v>=1000000?(v/1000000).toFixed(1)+'М':v>=1000?Math.round(v/1000)+'К':v}}}}
+    });
+  } else {
+    const wks={};dates.forEach(dt=>{const w='Нед.'+Math.ceil(new Date(dt).getDate()/7);if(!wks[w])wks[w]={m:0,d:0};wks[w].m+=d[dt].mRev;wks[w].d+=d[dt].dRev;});
+    const wl=Object.keys(wks);
+    charts.l=new Chart(canvas,{type:'bar',
+      data:{labels:wl,datasets:[
+        {label:'Мойка',data:wl.map(w=>wks[w].m),backgroundColor:'rgba(0,214,143,.7)',borderRadius:4},
+        {label:'ДЦ',data:wl.map(w=>wks[w].d),backgroundColor:'rgba(0,180,255,.7)',borderRadius:4},
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{labels:{color:'#606080',font:{size:10},boxWidth:10}}},
+        scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#606080',font:{size:10}}},
+                y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#606080',font:{size:9},callback:v=>v>=1000000?(v/1000000).toFixed(1)+'М':v>=1000?Math.round(v/1000)+'К':v}}}}
+    });
+  }
+}
+
+// ---- UPLOAD ----
+// ---- COMPARE HELPERS ----
+function getPrevMonth(ym){
+  const [y,m]=ym.split('-').map(Number);
+  if(m===1)return`${y-1}-12`;
+  return`${y}-${String(m-1).padStart(2,'0')}`;
+}
+
+function sumLocByMonth(loc,ym){
+  // Use ALL_DATA which has data for all months
+  const monthData=ALL_DATA[ym];
+  if(monthData){
+    const locData=monthData[loc]||{};
+    return Object.values(locData).reduce((a,v)=>({
+      mRev:a.mRev+(v.mRev||0)+(v.mRevPrev||0),
+      mCars:a.mCars+(v.mCars||0)+(v.mCarsPrev||0),
+      dRev:a.dRev+(v.dRev||0)+(v.dRevPrev||0),
+      dCars:a.dCars+(v.dCars||0)+(v.dCarsPrev||0),
+      mRevPrev:a.mRevPrev+(v.mRevPrev||0),
+      dRevPrev:a.dRevPrev+(v.dRevPrev||0),
+    }),{mRev:0,mCars:0,dRev:0,dCars:0,mRevPrev:0,dRevPrev:0});
+  }
+  // Fallback: search RAW_DATA by date prefix
+  return Object.entries(RAW_DATA[loc]||{})
+    .filter(([dt])=>dt.startsWith(ym))
+    .reduce((a,[,v])=>({
+      mRev:a.mRev+(v.mRev||0)+(v.mRevPrev||0),
+      mCars:a.mCars+(v.mCars||0)+(v.mCarsPrev||0),
+      dRev:a.dRev+(v.dRev||0)+(v.dRevPrev||0),
+      dCars:a.dCars+(v.dCars||0)+(v.dCarsPrev||0),
+      mRevPrev:a.mRevPrev+(v.mRevPrev||0),
+      dRevPrev:a.dRevPrev+(v.dRevPrev||0),
+    }),{mRev:0,mCars:0,dRev:0,dCars:0,mRevPrev:0,dRevPrev:0});
+}
+
+// ---- COMPARE PAGE ----
+function renderCompare(c){
+  const MONTH_NAMES={
+    '2026-01':'Январь 2026','2026-02':'Февраль 2026','2026-03':'Март 2026',
+    '2026-04':'Апрель 2026','2026-05':'Май 2026','2025-12':'Декабрь 2025',
+    '2025-11':'Ноябрь 2025','2025-10':'Октябрь 2025','2025-04':'Апрель 2025',
+    '2025-03':'Март 2025','2025-02':'Февраль 2025','2025-01':'Январь 2025',
+  };
+
+  let mA=currentMonth, mB=getPrevMonth(currentMonth);
+
+  function diffVal(a,b){
+    const d=a-b, p=b?Math.round(d/b*100):0;
+    const sign=d>=0?'+':'';
+    const col=d>=0?'var(--green)':'var(--red)';
+    const bg=d>=0?'rgba(0,214,143,.1)':'rgba(255,77,109,.1)';
+    return `<span style="color:${col};font-weight:600">${sign}${fmt(d)} ₽</span> <span style="font-size:11px;padding:1px 7px;border-radius:20px;background:${bg};color:${col};font-weight:600">${sign}${p}%</span>`;
+  }
+
+  function diffNum(a,b){
+    const d=a-b, p=b?Math.round(d/b*100):0;
+    const sign=d>=0?'+':'';
+    const col=d>=0?'var(--green)':'var(--red)';
+    const bg=d>=0?'rgba(0,214,143,.1)':'rgba(255,77,109,.1)';
+    return `<span style="color:${col};font-weight:600">${sign}${fmt(d)}</span> <span style="font-size:11px;padding:1px 7px;border-radius:20px;background:${bg};color:${col};font-weight:600">${sign}${p}%</span>`;
+  }
+
+  function buildSelects(){
+    return Object.entries(MONTH_NAMES).map(([v,n])=>`<option value="${v}">${n}</option>`).join('');
+  }
+
+  function draw(){
+    const nameA=MONTH_NAMES[mA]||mA, nameB=MONTH_NAMES[mB]||mB;
+
+    // Net totals
+    let nA={mRev:0,dRev:0,mCars:0,dCars:0}, nB={mRev:0,dRev:0,mCars:0,dCars:0};
+    LOC_ORDER.forEach(loc=>{
+      const sA=sumLocByMonth(loc,mA), sB=sumLocByMonth(loc,mB);
+      nA.mRev+=sA.mRev;nA.dRev+=sA.dRev;nA.mCars+=sA.mCars;nA.dCars+=sA.dCars;
+      nB.mRev+=sB.mRev;nB.dRev+=sB.dRev;nB.mCars+=sB.mCars;nB.dCars+=sB.dCars;
+    });
+    nA.total=nA.mRev+nA.dRev; nB.total=nB.mRev+nB.dRev;
+    nA.cars=nA.mCars+nA.dCars; nB.cars=nB.mCars+nB.dCars;
+
+    // Network banner
+    const netItems=[
+      ['Выручка общая', nA.total, nB.total, true, ''],
+      ['Авто общее', nA.cars, nB.cars, false, ''],
+      ['Мойка', nA.mRev, nB.mRev, true, 'var(--green)'],
+      ['ДЦ', nA.dRev, nB.dRev, true, 'var(--blue)'],
+    ];
+
+    let netHtml=`<div style="border:1px solid var(--border);border-radius:var(--r);overflow:hidden;background:var(--s1);margin-bottom:12px">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr)" class="cmp-net-grid">`;
+    netItems.forEach(([label,a,b,isMoney,color],i)=>{
+      const br=i<3?'border-right:1px solid var(--border);':'';
+      const diff=isMoney?diffVal(a,b):diffNum(a,b);
+      const suf=isMoney?' ₽':'';
+      netHtml+=`<div style="padding:16px 20px;${br}">
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px">${label}</div>
+        <div style="font-size:22px;font-weight:700;color:${color||'var(--text)'};margin-bottom:2px;white-space:nowrap">${fmt(a)}${suf}</div>
+        <div style="font-size:14px;color:var(--muted);margin-bottom:8px;white-space:nowrap">${fmt(b)}${suf} <span style="font-size:12px">${nameB.split(' ')[0]}</span></div>
+        <div style="font-size:13px">${diff}</div>
+      </div>`;
+    });
+    netHtml+='</div></div>';
+
+    // Objects table
+    let rows='';
+    LOC_ORDER.forEach(loc=>{
+      const sA=sumLocByMonth(loc,mA), sB=sumLocByMonth(loc,mB);
+      const tA=sA.mRev+sA.dRev, tB=sB.mRev+sB.dRev;
+      rows+=`<tr>
+        <td><span style="width:8px;height:8px;border-radius:50%;background:${LOCS[loc].color};display:inline-block;margin-right:7px;vertical-align:middle"></span><span style="font-weight:600">${LOCS[loc].name}</span></td>
+        <td class="r" style="font-weight:600;white-space:nowrap">${fmt(tA)} ₽</td>
+        <td class="r" style="color:var(--muted);white-space:nowrap">${fmt(tB)} ₽</td>
+        <td class="r">${diffVal(tA,tB)}</td>
+        <td class="r" style="color:var(--green);white-space:nowrap">${fmt(sA.mRev)} ₽</td>
+        <td class="r" style="color:var(--muted);white-space:nowrap">${fmt(sB.mRev)} ₽</td>
+        <td class="r">${diffVal(sA.mRev,sB.mRev)}</td>
+        <td class="r" style="color:var(--blue);white-space:nowrap">${fmt(sA.dRev)} ₽</td>
+        <td class="r" style="color:var(--muted);white-space:nowrap">${fmt(sB.dRev)} ₽</td>
+        <td class="r">${diffVal(sA.dRev,sB.dRev)}</td>
+      </tr>`;
+    });
+
+    // Totals row
+    rows+=`<tr style="font-weight:700;background:var(--s2);border-top:2px solid var(--border)">
+      <td>Итого по сети</td>
+      <td class="r" style="white-space:nowrap">${fmt(nA.total)} ₽</td>
+      <td class="r" style="color:var(--muted);white-space:nowrap">${fmt(nB.total)} ₽</td>
+      <td class="r">${diffVal(nA.total,nB.total)}</td>
+      <td class="r" style="white-space:nowrap">${fmt(nA.mRev)} ₽</td>
+      <td class="r" style="color:var(--muted);white-space:nowrap">${fmt(nB.mRev)} ₽</td>
+      <td class="r">${diffVal(nA.mRev,nB.mRev)}</td>
+      <td class="r" style="white-space:nowrap">${fmt(nA.dRev)} ₽</td>
+      <td class="r" style="color:var(--muted);white-space:nowrap">${fmt(nB.dRev)} ₽</td>
+      <td class="r">${diffVal(nA.dRev,nB.dRev)}</td>
+    </tr>`;
+
+    const shortA=nameA.split(' ')[0], shortB=nameB.split(' ')[0];
+
+    c.innerHTML=`
+      <style>
+        .csel{display:flex;align-items:center;gap:7px;background:var(--s2);border:1px solid var(--border);border-radius:8px;padding:7px 12px}
+        .csel-lbl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;white-space:nowrap}
+        .csel select{background:transparent;border:none;color:var(--text);font-size:13px;cursor:pointer;outline:none;font-family:'Geologica',sans-serif}
+        @media(max-width:768px){.cmp-net-grid{grid-template-columns:1fr 1fr!important}}
+      </style>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+        <div class="csel">
+          <span class="csel-lbl">Период А</span>
+          <select id="cmpA">
+            ${Object.entries(MONTH_NAMES).map(([v,n])=>`<option value="${v}"${v===mA?' selected':''}>${n}</option>`).join('')}
+          </select>
+        </div>
+        <span style="font-size:13px;font-weight:700;color:var(--muted)">vs</span>
+        <div class="csel">
+          <span class="csel-lbl">Период Б</span>
+          <select id="cmpB">
+            ${Object.entries(MONTH_NAMES).map(([v,n])=>`<option value="${v}"${v===mB?' selected':''}>${n}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      ${netHtml}
+      <div class="table-card">
+        <div class="table-header">
+          <div class="table-title">По объектам</div>
+        </div>
+        <div class="tbl-wrap"><table>
+          <thead><tr>
+            <th>Объект</th>
+            <th class="r">Выручка <span style="color:var(--accent)">${shortA}</span></th>
+            <th class="r">Выручка <span style="color:var(--muted)">${shortB}</span></th>
+            <th class="r">Разница</th>
+            <th class="r">Мойка <span style="color:var(--accent)">${shortA}</span></th>
+            <th class="r">Мойка <span style="color:var(--muted)">${shortB}</span></th>
+            <th class="r">Разница М</th>
+            <th class="r">ДЦ <span style="color:var(--accent)">${shortA}</span></th>
+            <th class="r">ДЦ <span style="color:var(--muted)">${shortB}</span></th>
+            <th class="r">Разница ДЦ</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table></div>
+      </div>`;
+
+    document.getElementById('cmpA').onchange=function(){mA=this.value;draw();};
+    document.getElementById('cmpB').onchange=function(){mB=this.value;draw();};
+  }
+
+  draw();
+}
+
+function renderUpload(c){
+  const monthOpts=[
+    ['2026-06','Июнь 2026'],
+    ['2026-05','Май 2026'],
+    ['2026-04','Апрель 2026'],
+    ['2026-03','Март 2026'],
+    ['2026-02','Февраль 2026'],
+    ['2026-01','Январь 2026'],
+  ].map(([v,n])=>`<option value="${v}"${v===currentMonth?' selected':''}>${n}</option>`).join('');
+
+  c.innerHTML=`
+    <div style="background:var(--s1);border:1px solid var(--border);border-radius:var(--r);padding:16px 20px;margin-bottom:12px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div style="font-size:13px;font-weight:600">За какой месяц загружаешь?</div>
+      <select id="uploadMonth" style="background:var(--s2);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:8px;font-family:'Geologica',sans-serif;font-size:13px;cursor:pointer;outline:none">
+        ${monthOpts}
+      </select>
+      <div style="font-size:12px;color:var(--muted)">Все заказы из файла пойдут в выручку этого месяца</div>
+    </div>
+    <div class="upload-zone" id="uz">
+      <input type="file" id="uinput" accept=".xlsx,.xls" onchange="handleFile(event)">
+      <div class="upload-icon">📊</div>
+      <div class="upload-title">Перетащите файл или нажмите</div>
+      <div class="upload-sub">Выгрузка из CRM — все объекты в одном файле</div>
+    </div>
+    <div id="uResult"></div>`;
+  const uz=document.getElementById('uz');
+  uz.addEventListener('dragover',e=>{e.preventDefault();uz.classList.add('over')});
+  uz.addEventListener('dragleave',()=>uz.classList.remove('over'));
+  uz.addEventListener('drop',e=>{e.preventDefault();uz.classList.remove('over');if(e.dataTransfer.files[0])processFile(e.dataTransfer.files[0])});
+}
+function handleFile(e){if(e.target.files[0])processFile(e.target.files[0]);}
+
+function classifySvc(s){
+  s=String(s);
+  if(/переобувк|хранение рез|шиномонтаж|балансировк/i.test(s)) return 'shino';
+  if(/\. Д /.test(s)||s.startsWith('Д ')||s.startsWith('Д.-')||s.includes('Д - ')||s.includes('Д-')) return 'dc';
+  if(/ М /.test(s)||s.includes('М -')||s.includes('М-')||s.startsWith('М.')) return 'moika';
+  if(/\d+\.\s*M\s*-/.test(s)) return 'moika';
+  if(/такси мойка|комплекс|стандарт|озонац|химчистка всех сидений|такси химчистка/i.test(s)) return 'moika';
+  return null;
+}
+
+function detectAddr(addr){
+  const a=String(addr).toLowerCase();
+  if(a.includes('кутузовский')) return 'oceania';
+  if(a.includes('хорошев')||a.includes('хорошов')) return 'horoshevo';
+  if(a.includes('лиговский')) return 'galereya';
+  if(a.includes('большая красная')) return 'kazan';
+  if(a.includes('новая заря')||a.includes('моремолл')) return 'sochi';
+  if(a.includes('серпуховская')||a.includes('серпуховск')) return 'serpuhovka';
+  return null;
+}
+
+function processFile(file){
+  document.getElementById('uResult').innerHTML=`<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">⏳ Обрабатываем файл...</div>`;
+  const selMonth=document.getElementById('uploadMonth');
+  const targetMonth=selMonth?selMonth.value:currentMonth;
+
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'binary',cellDates:true});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+      parseAndSaveRows(rows, targetMonth, file.name);
+    }catch(err){
+      document.getElementById('uResult').innerHTML=`<div class="result-card" style="border-color:var(--red);margin-top:12px"><div style="color:var(--red)">❌ Ошибка: ${err.message}</div></div>`;
+    }
+  };
+  r.readAsBinaryString(file);
+}
+
+function parseAndSaveRows(rows, targetMonth, filename){
+  const keys=Object.keys(rows[0]||{});
+  const orderCol=keys.find(k=>k.includes('заказ'))||'№ заказ-наряда';
+  const dateCol=keys.find(k=>k.toLowerCase()==='дата')||'Дата';
+  const svcCol=keys.find(k=>k.includes('слуг'))||'Услуга';
+  const sumCol=keys.find(k=>k.includes('умм'))||'Сумма';
+  const addrCol=keys.find(k=>k.includes('Адрес'))||'Адрес оказания услуг';
+
+  const orderMap={};
+  for(const row of rows){
+    const o=String(row[orderCol]||'').trim();
+    if(!o||o==='nan') continue;
+    const tp=classifySvc(row[svcCol]);
+    const amt=parseFloat(row[sumCol])||0;
+    const dt=row[dateCol];
+    let dateStr;
+    if(dt instanceof Date){
+      const y=dt.getFullYear(),m=String(dt.getMonth()+1).padStart(2,'0'),d=String(dt.getDate()).padStart(2,'0');
+      dateStr=`${y}-${m}-${d}`;
+    } else {
+      const match=String(dt).match(/(\d{4}-\d{2}-\d{2})/);
+      dateStr=match?match[1]:null;
+    }
+    if(!dateStr) continue;
+    const loc=detectAddr(row[addrCol]);
+    if(!loc) continue;
+    if(!orderMap[o]) orderMap[o]={date:dateStr,loc,mSum:0,dSum:0,shinoSum:0,hasTyped:false};
+    if(tp==='moika'){orderMap[o].mSum+=amt;orderMap[o].hasTyped=true;}
+    else if(tp==='dc'){orderMap[o].dSum+=amt;orderMap[o].hasTyped=true;}
+    else if(tp==='shino'){orderMap[o].shinoSum+=amt;orderMap[o].hasTyped=true;}
+  }
+
+  // Build daily data per location
+  const newData={};
+  let totalOrders=0,ignored=0;
+  const locStats={};
+
+  for(const [,v] of Object.entries(orderMap)){
+    if(!v.hasTyped){ignored++;continue;}
+    const {date,loc}=v;
+    const isPrev=!date.startsWith(targetMonth);
+    if(!newData[loc]) newData[loc]={};
+    if(!newData[loc][date]) newData[loc][date]={mRev:0,mCars:0,dRev:0,dCars:0,mRevPrev:0,mCarsPrev:0,dRevPrev:0,dCarsPrev:0};
+    const dcTotal=v.dSum+v.shinoSum;
+    const total=v.mSum+dcTotal;
+    if(dcTotal>v.mSum){
+      if(isPrev){newData[loc][date].dRevPrev+=total;newData[loc][date].dCarsPrev++;}
+      else{newData[loc][date].dRev+=total;newData[loc][date].dCars++;}
+    } else {
+      if(isPrev){newData[loc][date].mRevPrev+=total;newData[loc][date].mCarsPrev++;}
+      else{newData[loc][date].mRev+=total;newData[loc][date].mCars++;}
+    }
+    totalOrders++;
+    if(!locStats[loc]) locStats[loc]={m:0,d:0,mRev:0,dRev:0};
+    if(dcTotal>v.mSum){locStats[loc].d++;locStats[loc].dRev+=total;}
+    else{locStats[loc].m++;locStats[loc].mRev+=total;}
+  }
+
+  // Round all values
+  for(const loc of Object.keys(newData))
+    for(const dt of Object.keys(newData[loc]))
+      for(const k of Object.keys(newData[loc][dt]))
+        newData[loc][dt][k]=Math.round(newData[loc][dt][k]);
+
+  // Save to ALL_DATA
+  ALL_DATA[targetMonth]=newData;
+
+  // Show result
+  const MONTH_NAMES={'2026-01':'Январь','2026-02':'Февраль','2026-03':'Март','2026-04':'Апрель','2026-05':'Май','2026-06':'Июнь'};
+  let locRows=Object.entries(locStats).map(([loc,s])=>
+    `<div class="result-row"><span style="width:8px;height:8px;border-radius:50%;background:${LOCS[loc].color};display:inline-block"></span>${LOCS[loc].name}<span class="result-val">${fmt(s.mRev+s.dRev)} ₽ · ${s.m+s.d} авто</span></div>`
+  ).join('');
+
+  document.getElementById('uResult').innerHTML=`
+    <div class="result-card" style="margin-top:12px;border-color:var(--green)">
+      <div class="result-row"><span>📁</span>Файл<span class="result-val">${filename}</span></div>
+      <div class="result-row"><span>📅</span>Месяц<span class="result-val" style="color:var(--accent)">${MONTH_NAMES[targetMonth]||targetMonth} 2026</span></div>
+      <div class="result-row"><span>📋</span>Заказов обработано<span class="result-val">${totalOrders.toLocaleString('ru-RU')}</span></div>
+      <div class="result-row"><span>⚪</span>Проигнорировано<span class="result-val" style="color:var(--muted)">${ignored}</span></div>
+      ${locRows}
+    </div>
+    <div style="display:flex;gap:8px;margin-top:12px">
+      <button class="btn btn-primary" onclick="currentMonth='${targetMonth}';onMonthChange2&&onMonthChange2();go('summary');showToast('✓ Переключились на ${MONTH_NAMES[targetMonth]||targetMonth}')">Смотреть сводку →</button>
+    </div>`;
+
+  showToast('✓ Данные загружены за ${MONTH_NAMES[targetMonth]||targetMonth}');
+}
+
+// ---- SETTINGS ----
+function renderSettings(c){
+  let rows=LOC_ORDER.map(loc=>{const p=PLAN[loc]||{};
+    return`<tr>
+      <td style="color:${LOCS[loc].color}">${LOCS[loc].name}</td>
+      <td><input class="s-inp" type="number" value="${p.revTotal||''}" placeholder="0"></td>
+      <td><input class="s-inp" type="number" value="${p.carsTotal||''}" placeholder="0"></td>
+      <td><input class="s-inp" type="number" value="${p.revM||''}" placeholder="0"></td>
+      <td><input class="s-inp" type="number" value="${p.carsM||''}" placeholder="0"></td>
+      <td><input class="s-inp" type="number" value="${p.revD||''}" placeholder="0"></td>
+      <td><input class="s-inp" type="number" value="${p.carsD||''}" placeholder="0"></td>
+    </tr>`;
+  }).join('');
+  c.innerHTML=`
+    <div class="table-card">
+      <div class="table-header">
+        <div class="table-title">План на апрель 2026</div>
+        <button class="btn btn-primary" onclick="showToast('✓ В полной версии план сохранится в базу')">Сохранить</button>
+      </div>
+      <div class="tbl-wrap"><table class="settings-tbl">
+        <thead><tr><th>Объект</th><th>Выр. общая</th><th>Авто</th><th>Выр. мойка</th><th>Авто М</th><th>Выр. ДЦ</th><th>Авто ДЦ</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-top:8px;line-height:1.7">Ср. чек считается автоматически. В полной версии план сохраняется в базу и используется для расчёта % и прогноза на всех дашбордах.</div>`;
+}
+
+// ---- EXPORT ----
+function exportCSV(loc){
+  const d=getFiltered(loc);const dates=Object.keys(d).sort();
+  const lines=['Дата;Выр.Мойка;Авто М;Ср.чек М;Выр.ДЦ;Авто ДЦ;Ср.чек ДЦ'];
+  dates.forEach(dt=>{const v=d[dt];lines.push([dt,v.mRev,v.mCars,v.mCars?Math.round(v.mRev/v.mCars):0,v.dRev,v.dCars,v.dCars?Math.round(v.dRev/v.dCars):0].join(';'));});
+  const blob=new Blob(['\uFEFF'+lines.join('\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`РНП_${LOCS[loc].name}_${dateFrom}_${dateTo}.csv`;a.click();
+  showToast('CSV скачан');
+}
+
+// ---- UI ----
+function toggleSidebar(){document.getElementById('sidebar').classList.toggle('open');document.getElementById('overlay').classList.toggle('show');}
+function closeSidebar(){document.getElementById('sidebar').classList.remove('open');document.getElementById('overlay').classList.remove('show');}
+function showToast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+
+// INIT
+go('summary');
+</script>
+</body>
+</html>
